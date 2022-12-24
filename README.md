@@ -3,4 +3,4 @@
 
 * IP  51.250.94.185
 * [Frontend](https://pastukhovoa.nomoredomains.club)
-* [Backend](https://pastukhovoa.nomoredomains.club)
+* [Backend](https://api.pastukhovoa.nomoredomains.club)
