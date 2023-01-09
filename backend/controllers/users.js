@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 // eslint-disable-next-line import/no-unresolved
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -5,26 +7,62 @@ const User = require('../models/user');
 const BadRequestError = require('../errors/BadRequestError');
 const ConflictError = require('../errors/ConflictError');
 const NotFoundError = require('../errors/NotFoundError');
-const UnauthorizedError = require('../errors/UnauthorizedError');
+// const UnauthorizedError = require('../errors/UnauthorizedError');
+
+const { NODE_ENV, JWT_SECRET } = process.env;
 
 // eslint-disable-next-line consistent-return
-const login = async (req, res, next) => {
+// const login = async (req, res, next) => {
+//   const { email, password } = req.body;
+//   if (!email || !password) {
+//     next(new BadRequestError('Invalid email or password'));
+//   }
+//   try {
+//     const user = await User.findUserByCredentials(email, password);
+//     if (!user) {
+//       next(new UnauthorizedError('User not found'));
+//     }
+
+// const payload = { _id: user._id };
+// const tokenKey = JWT_SECRET;
+// const token = jwt.sign(
+//   payload,
+//   NODE_ENV === 'production' ? tokenKey : 'some-secret-key',
+//   { expiresIn: '7d' },
+// );
+
+//     const token = jwt.sign(
+//       { _id: user._id },
+//       NODE_ENV === 'production' ? JWT_SECRET : 'some-secret-key',
+//       { expiresIn: '7d' },
+//     );
+//     res.send({ token });
+//   } catch (e) {
+//     return next(e);
+//   }
+// };
+const login = (req, res, next) => {
   const { email, password } = req.body;
-  if (!email || !password) {
-    next(new BadRequestError('Invalid email or password'));
-  }
-  try {
-    const user = await User.findUserByCredentials(email, password);
-    if (!user) {
-      next(new UnauthorizedError('User not found'));
-    }
-    const payload = { _id: user._id };
-    const tokenKey = 'some-secret-key';
-    const token = jwt.sign(payload, tokenKey, { expiresIn: '7d' });
-    return res.status(200).json({ token });
-  } catch (e) {
-    return next(e);
-  }
+  return User.findUserByCredentials(email, password)
+    // eslint-disable-next-line consistent-return
+    .then((user) => {
+      // проверим существует ли такой email или пароль
+      if (!user || !password) {
+        return next(new BadRequestError('Неверный email или пароль.'));
+      }
+
+      // создадим токен
+      const token = jwt.sign(
+        { _id: user._id },
+        NODE_ENV === 'production' ? JWT_SECRET : 'some-secret-key',
+        {
+          expiresIn: '7d',
+        },
+      );
+      // вернём токен
+      res.send({ token });
+    })
+    .catch(next);
 };
 
 const createUser = async (req, res, next) => {
@@ -66,17 +104,34 @@ const createUser = async (req, res, next) => {
   }
 };
 
-const getCurrentUser = async (req, res, next) => {
+// const getCurrentUser = async (req, res, next) => {
+//   const { _id } = req.user;
+// eslint-disable-next-line no-constant-condition
+// if (!userId) {
+//   next(new BadRequestError('Invalid id'));
+// }
+//   try {
+//     const user = await User.findById(_id);
+//     if (!user) {
+//       return next(new NotFoundError('User with this id not found'));
+//     }
+//     // return res.status(200).json(user);
+//     return res.status(200).send(user);
+//   } catch (e) {
+//     return next(e);
+//   }
+// };
+
+const getCurrentUser = (req, res, next) => {
   const { _id } = req.user;
-  try {
-    const user = await User.findById(_id);
+  User.findById(_id).then((user) => {
+    // проверяем, есть ли пользователь с таким id
     if (!user) {
-      return next(new NotFoundError('User not found'));
+      return next(new NotFoundError('Пользователь не найден.'));
     }
-    return res.status(200).json(user);
-  } catch (e) {
-    return next(e);
-  }
+    // возвращаем пользователя, если он есть
+    return res.status(200).send(user);
+  }).catch(next);
 };
 
 const getUsers = async (req, res, next) => {
@@ -93,7 +148,7 @@ const getUserById = async (req, res, next) => {
   try {
     const user = await User.findById(userId);
     if (!user) {
-      return next(new NotFoundError('User not found'));
+      return next(new NotFoundError('User not found by Id in params'));
     }
     return res.status(200).json(user);
   } catch (e) {
@@ -112,7 +167,7 @@ const updateUser = async (req, res, next) => {
       { new: true, runValidators: true },
     );
     if (!user) {
-      return next(new NotFoundError('User not found'));
+      return next(new NotFoundError('updateUser User not found'));
     }
     return res.status(200).send(user);
   } catch (e) {
@@ -134,7 +189,7 @@ const updateAvatar = async (req, res, next) => {
       { new: true, runValidators: true },
     );
     if (!user) {
-      return next(new NotFoundError('User not found'));
+      return next(new NotFoundError('updateAvatar User not found'));
     }
     return res.status(200).json({ avatar });
   } catch (e) {
